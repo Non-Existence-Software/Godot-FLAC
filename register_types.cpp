@@ -32,28 +32,35 @@
 
 #include "audio_stream_flac.h"
 
+#include "core/io/resource_importer.h"
+#include "core/object/class_db.h"
+
 #ifdef TOOLS_ENABLED
-#include "core/config/engine.h"
 #include "resource_importer_flac.h"
+
+#include "editor/editor_node.h"
+
+static void _editor_init() {
+	Ref<ResourceImporterFLAC> flac_import;
+	flac_import.instantiate();
+	ResourceFormatImporter::get_singleton()->add_importer(flac_import);
+}
+
 #endif
 
 void initialize_flac_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
+		GDREGISTER_CLASS(AudioStreamFLAC);
 	}
 
 #ifdef TOOLS_ENABLED
-	if (Engine::get_singleton()->is_editor_hint()) {
-		Ref<ResourceImporterFLAC> flac_import;
-		flac_import.instantiate();
-		ResourceFormatImporter::get_singleton()->add_importer(flac_import);
+	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
+		GDREGISTER_CLASS(ResourceImporterFLAC);
+		
+		EditorNode::add_init_callback(_editor_init);
 	}
 #endif
-	GDREGISTER_CLASS(AudioStreamFLAC);
 }
 
 void uninitialize_flac_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
 }

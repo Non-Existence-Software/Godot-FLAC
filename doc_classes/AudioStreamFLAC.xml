@@ -8,6 +8,22 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="load_from_buffer" qualifiers="static">
+			<return type="AudioStreamFLAC" />
+			<param index="0" name="stream_data" type="PackedByteArray" />
+			<description>
+				Creates a new [AudioStreamFLAC] instance from the given buffer. The buffer must contain FLAC data.
+			</description>
+		</method>
+		<method name="load_from_file" qualifiers="static">
+			<return type="AudioStreamFLAC" />
+			<param index="0" name="path" type="String" />
+			<description>
+				Creates a new [AudioStreamFLAC] instance from the given file path. The file must be in FLAC format.
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="bar_beats" type="int" setter="set_bar_beats" getter="get_bar_beats" default="4">
 		</member>

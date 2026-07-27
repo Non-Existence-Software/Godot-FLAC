@@ -30,9 +30,9 @@
 
 #include "resource_importer_flac.h"
 
-#include "core/io/file_access.h"
+#include "audio_stream_flac.h"
+
 #include "core/io/resource_saver.h"
-#include "scene/resources/texture.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/import/audio_stream_import_settings.h"
@@ -82,34 +82,14 @@ void ResourceImporterFLAC::get_import_options(const String &p_path, List<ImportO
 bool ResourceImporterFLAC::has_advanced_options() const {
 	return true;
 }
+
 void ResourceImporterFLAC::show_advanced_options(const String &p_path) {
-	Ref<AudioStreamFLAC> flac_stream = import_flac(p_path);
+	Ref<AudioStreamFLAC> flac_stream = AudioStreamFLAC::load_from_file(p_path);
 	if (flac_stream.is_valid()) {
 		AudioStreamImportSettingsDialog::get_singleton()->edit(p_path, "flac", flac_stream);
 	}
 }
 #endif
-
-Ref<AudioStreamFLAC> ResourceImporterFLAC::import_flac(const String &p_path) {
-	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
-	ERR_FAIL_COND_V(f.is_null(), Ref<AudioStreamFLAC>());
-
-	uint64_t len = f->get_length();
-
-	Vector<uint8_t> data;
-	data.resize(len);
-	uint8_t *w = data.ptrw();
-
-	f->get_buffer(w, len);
-
-	Ref<AudioStreamFLAC> flac_stream;
-	flac_stream.instantiate();
-
-	flac_stream->set_data(data);
-	ERR_FAIL_COND_V(!flac_stream->get_data().size(), Ref<AudioStreamFLAC>());
-
-	return flac_stream;
-}
 
 Error ResourceImporterFLAC::import(ResourceUID::ID p_source_id, const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	bool loop = p_options["loop"];
@@ -118,10 +98,11 @@ Error ResourceImporterFLAC::import(ResourceUID::ID p_source_id, const String &p_
 	float beat_count = p_options["beat_count"];
 	float bar_beats = p_options["bar_beats"];
 
-	Ref<AudioStreamFLAC> flac_stream = import_flac(p_source_file);
+	Ref<AudioStreamFLAC> flac_stream = AudioStreamFLAC::load_from_file(p_source_file);
 	if (flac_stream.is_null()) {
 		return ERR_CANT_OPEN;
 	}
+	
 	flac_stream->set_loop(loop);
 	flac_stream->set_loop_offset(loop_offset);
 	flac_stream->set_bpm(bpm);

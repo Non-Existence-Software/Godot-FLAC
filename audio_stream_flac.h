@@ -28,13 +28,11 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef AUDIO_STREAM_FLAC_H
-#define AUDIO_STREAM_FLAC_H
+#pragma once
 
-#include "core/io/resource_loader.h"
-#include "scene/resources/texture.h"
 #include "servers/audio/audio_stream.h"
-#include "thirdparty/dr_flac/dr_flac.h"
+
+#include <thirdparty/dr_libs/dr_flac.h>
 
 class AudioStreamFLAC;
 
@@ -47,7 +45,9 @@ class AudioStreamPlaybackFLAC : public AudioStreamPlaybackResampled {
 	AudioFrame loop_fade[FADE_SIZE];
 	int loop_fade_remaining = FADE_SIZE;
 
-	drflac *pFlac = nullptr;
+	bool looping_override = false;
+	bool looping = false;
+	drflac flacd = {};
 	uint32_t frames_mixed = 0;
 	bool active = false;
 	int loops = 0;
@@ -56,7 +56,8 @@ class AudioStreamPlaybackFLAC : public AudioStreamPlaybackResampled {
 
 	Ref<AudioStreamFLAC> flac_stream;
 
-	//void populate_first_frame(int, mp3dec_frame_info_t *);
+	bool _is_sample = false;
+	Ref<AudioSamplePlayback> sample_playback;
 
 protected:
 	virtual int _mix_internal(AudioFrame *p_buffer, int p_frames) override;
@@ -74,6 +75,15 @@ public:
 
 	virtual void tag_used_streams() override;
 
+	virtual void set_is_sample(bool p_is_sample) override;
+	virtual bool get_is_sample() const override;
+	virtual Ref<AudioSamplePlayback> get_sample_playback() const override;
+	virtual void set_sample_playback(const Ref<AudioSamplePlayback> &p_playback) override;
+
+	virtual void set_parameter(const StringName &p_name, const Variant &p_value) override;
+	virtual Variant get_parameter(const StringName &p_name) const override;
+
+
 	AudioStreamPlaybackFLAC() {}
 	~AudioStreamPlaybackFLAC();
 };
@@ -85,7 +95,7 @@ class AudioStreamFLAC : public AudioStream {
 
 	friend class AudioStreamPlaybackFLAC;
 
-	PackedByteArray data;
+	TightLocalVector<uint8_t> data;
 	uint32_t data_len = 0;
 
 	float sample_rate = 1.0;
@@ -103,6 +113,9 @@ protected:
 	static void _bind_methods();
 
 public:
+	static Ref<AudioStreamFLAC> load_from_buffer(const Vector<uint8_t> &p_stream_data);
+	static Ref<AudioStreamFLAC> load_from_file(const String &p_path);
+
 	void set_loop(bool p_enable);
 	virtual bool has_loop() const override;
 
@@ -124,12 +137,17 @@ public:
 	void set_data(const Vector<uint8_t> &p_data);
 	Vector<uint8_t> get_data() const;
 
-	virtual double get_length() const override; //if supported, otherwise return 0
+	virtual double get_length() const override; // if supported, otherwise return 0
 
 	virtual bool is_monophonic() const override;
+
+	virtual bool can_be_sampled() const override {
+		return true;
+	}
+	virtual Ref<AudioSample> generate_sample() const override;
+
+	virtual void get_parameter_list(List<Parameter> *r_parameters) override;
 
 	AudioStreamFLAC();
 	virtual ~AudioStreamFLAC();
 };
-
-#endif
