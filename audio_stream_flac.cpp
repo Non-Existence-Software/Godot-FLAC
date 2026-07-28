@@ -59,10 +59,10 @@ int AudioStreamPlaybackFLAC::_mix_internal(AudioFrame *p_buffer, int p_frames) {
 	while (todo && active) {
 		float buf_frame[2];
 		
-		int samples_mixed  = drflac_read_pcm_frames_f32(&flacd, 1, buf_frame);
+		int samples_mixed  = drflac_read_pcm_frames_f32(flacd, 1, buf_frame);
 
 		if (samples_mixed) {
-			p_buffer[p_frames - todo] = AudioFrame(buf_frame[0], buf_frame[flacd.channels - 1]);
+			p_buffer[p_frames - todo] = AudioFrame(buf_frame[0], buf_frame[flacd->channels - 1]);
 			if (loop_fade_remaining < FADE_SIZE) {
 				p_buffer[p_frames - todo] += loop_fade[loop_fade_remaining] * (float(FADE_SIZE - loop_fade_remaining) / float(FADE_SIZE));
 				loop_fade_remaining++;
@@ -72,8 +72,8 @@ int AudioStreamPlaybackFLAC::_mix_internal(AudioFrame *p_buffer, int p_frames) {
 
 			if (beat_loop && (int)frames_mixed >= beat_length_frames) {
 				for (int i = 0; i < FADE_SIZE; i++) {
-					samples_mixed = drflac_read_pcm_frames_f32(&flacd, 1, buf_frame);
-					loop_fade[i] = AudioFrame(buf_frame[0], buf_frame[flacd.channels - 1]);
+					samples_mixed = drflac_read_pcm_frames_f32(flacd, 1, buf_frame);
+					loop_fade[i] = AudioFrame(buf_frame[0], buf_frame[flacd->channels - 1]);
 					if (!samples_mixed) {
 						break;
 					}
@@ -140,7 +140,7 @@ void AudioStreamPlaybackFLAC::seek(double p_time) {
 	}
 
 	frames_mixed = uint32_t(flac_stream->sample_rate * p_time);
-	drflac_seek_to_pcm_frame(&flacd, (uint64_t)frames_mixed);
+	drflac_seek_to_pcm_frame(flacd, (uint64_t)frames_mixed);
 }
 
 void AudioStreamPlaybackFLAC::tag_used_streams() {
@@ -186,7 +186,10 @@ Variant AudioStreamPlaybackFLAC::get_parameter(const StringName &p_name) const {
 }
 
 AudioStreamPlaybackFLAC::~AudioStreamPlaybackFLAC() {
-	drflac_close(&flacd);
+	if (flacd) {
+		drflac_close(flacd);
+		flacd = nullptr;
+	}
 }
 
 Ref<AudioStreamPlayback> AudioStreamFLAC::instantiate_playback() {
@@ -200,14 +203,13 @@ Ref<AudioStreamPlayback> AudioStreamFLAC::instantiate_playback() {
 	flacs.instantiate();
 	flacs->flac_stream = Ref<AudioStreamFLAC>(this);
 
-	drflac *flacd = drflac_open_memory(data.ptr(), data_len, (drflac_allocation_callbacks *)&dr_alloc_calls);
-	flacs->flacd = *flacd;
+	flacs->flacd = drflac_open_memory(data.ptr(), data_len, (drflac_allocation_callbacks *)&dr_alloc_calls);
 	
 	flacs->frames_mixed = 0;
 	flacs->active = false;
 	flacs->loops = 0;
 	
-	ERR_FAIL_COND_V(!flacd, Ref<AudioStreamPlaybackFLAC>());
+	ERR_FAIL_COND_V(!flacs->flacd, Ref<AudioStreamPlaybackFLAC>());
 
 	return flacs;
 }
@@ -233,6 +235,7 @@ void AudioStreamFLAC::set_data(const Vector<uint8_t> &p_data) {
 	length = float(flacd->totalPCMFrameCount) / (flacd->sampleRate);
 
 	drflac_close(flacd);
+	flacd = nullptr;
 
 	data = p_data;
 	data_len = src_data_len;

@@ -47,7 +47,7 @@ class AudioStreamPlaybackFLAC : public AudioStreamPlaybackResampled {
 
 	bool looping_override = false;
 	bool looping = false;
-	drflac flacd = {};
+	drflac* flacd = nullptr;
 	uint32_t frames_mixed = 0;
 	bool active = false;
 	int loops = 0;
