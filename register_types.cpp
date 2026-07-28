@@ -45,7 +45,6 @@ static void _editor_init() {
 	flac_import.instantiate();
 	ResourceFormatImporter::get_singleton()->add_importer(flac_import);
 }
-
 #endif
 
 void initialize_flac_module(ModuleInitializationLevel p_level) {
