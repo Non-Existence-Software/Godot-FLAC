@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#define DR_FLAC_NO_OGG
 #define DR_FLAC_IMPLEMENTATION
+#define DR_FLAC_NO_OGG
 #define DR_FLAC_NO_STDIO
 
 #include "audio_stream_flac.h"
