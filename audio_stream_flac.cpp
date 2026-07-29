@@ -222,10 +222,44 @@ void AudioStreamFLAC::clear_data() {
 	data.clear();
 }
 
+void AudioStreamFLAC::metadata_proc(void* pUserData, drflac_metadata* pMetadata) {
+	if (!pMetadata || pMetadata->type != DRFLAC_METADATA_BLOCK_TYPE_VORBIS_COMMENT)
+		return;
+
+	Dictionary* dictionary = static_cast<Dictionary*>(pUserData);
+	ERR_FAIL_COND(!dictionary);
+
+	drflac_vorbis_comment_iterator iterator;
+	drflac_init_vorbis_comment_iterator(&iterator, pMetadata->data.vorbis_comment.commentCount, pMetadata->data.vorbis_comment.pComments);
+
+	drflac_uint32 comment_length = 0; // Unused because string length is calculated by String constructor.
+	// Comments are required by the Vorbis spec to be structured like env vars, i.e. VAR=VALUE.
+	// This is how tags are stored (artist, album, etc.), and we parse them out for display.
+	// See https://xiph.org/vorbis/doc/v-comment.html
+
+	while(const char* pComment = drflac_next_vorbis_comment(&iterator, &comment_length)) {
+		String c = String(pComment);
+		int equals = c.find_char('=');
+
+#ifdef TOOLS_ENABLED
+		if (equals == -1) {
+			WARN_PRINT(vformat(R"(Invalid comment in FLAC file, should contain '=': "%s".)", c));
+			continue;
+		}
+#endif
+		String tag = c.substr(0, equals);
+		String tag_value = c.substr(equals + 1);
+
+		dictionary->set(tag.to_lower(), tag_value);
+	}
+}
+
 void AudioStreamFLAC::set_data(const Vector<uint8_t> &p_data) {
 	int src_data_len = p_data.size();
 
-	drflac *flacd = drflac_open_memory(p_data.ptr(), src_data_len, (drflac_allocation_callbacks *)&dr_alloc_calls);
+	Dictionary dictionary;
+
+	drflac *flacd = drflac_open_memory_with_metadata(p_data.ptr(), src_data_len, &metadata_proc, &dictionary, (drflac_allocation_callbacks *)&dr_alloc_calls);
 	if (!flacd || flacd->sampleRate == 0){
 		ERR_FAIL_MSG("Failed to decode FLAC file. Make sure it is a valid FLAC audio file.");
 	}
@@ -233,6 +267,8 @@ void AudioStreamFLAC::set_data(const Vector<uint8_t> &p_data) {
 	channels = flacd->channels;
 	sample_rate = flacd->sampleRate;
 	length = float(flacd->totalPCMFrameCount) / (flacd->sampleRate);
+
+	set_tags(dictionary);
 
 	drflac_close(flacd);
 	flacd = nullptr;
@@ -303,6 +339,14 @@ int AudioStreamFLAC::get_bar_beats() const {
 	return bar_beats;
 }
 
+void AudioStreamFLAC::set_tags(const Dictionary &p_tags) {
+	tags = p_tags;
+}
+
+Dictionary AudioStreamFLAC::get_tags() const {
+	return tags;
+}
+
 Ref<AudioSample> AudioStreamFLAC::generate_sample() const {
 	Ref<AudioSample> sample;
 	sample.instantiate();
@@ -352,10 +396,14 @@ void AudioStreamFLAC::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_bar_beats", "count"), &AudioStreamFLAC::set_bar_beats);
 	ClassDB::bind_method(D_METHOD("get_bar_beats"), &AudioStreamFLAC::get_bar_beats);
 
+	ClassDB::bind_method(D_METHOD("set_tags", "tags"), &AudioStreamFLAC::set_tags);
+	ClassDB::bind_method(D_METHOD("get_tags"), &AudioStreamFLAC::get_tags);
+
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_data", "get_data");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "bpm", PROPERTY_HINT_RANGE, "0,400,0.01,or_greater"), "set_bpm", "get_bpm");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "beat_count", PROPERTY_HINT_RANGE, "0,512,1,or_greater"), "set_beat_count", "get_beat_count");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "bar_beats", PROPERTY_HINT_RANGE, "2,32,1,or_greater"), "set_bar_beats", "get_bar_beats");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "tags", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_tags", "get_tags");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "loop"), "set_loop", "has_loop");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "loop_offset"), "set_loop_offset", "get_loop_offset");
 }
