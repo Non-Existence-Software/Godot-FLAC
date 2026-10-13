@@ -47,6 +47,8 @@ int32_t AudioStreamPlaybackFLAC::_mix_resampled(AudioFrame *p_buffer, int p_fram
 
 	int todo = p_frames;
 
+	int frames_mixed_this_step = p_frames;
+
 	int beat_length_frames = -1;
 	bool use_loop = looping_override ? looping : flac_stream->loop;
 
@@ -55,26 +57,10 @@ int32_t AudioStreamPlaybackFLAC::_mix_resampled(AudioFrame *p_buffer, int p_fram
 		beat_length_frames = flac_stream->_get_beat_count() * flac_stream->sample_rate * 60 / flac_stream->_get_bpm();
 	}
 
-	bool mixed_was_zero = false;
-
 	while (todo && active) {
 		float buf_frame[2];
 		
 		int samples_mixed  = drflac_read_pcm_frames_f32(flacd, 1, buf_frame);
-
-		if (samples_mixed > 0) {
-			mixed_was_zero = false;
-		}
-		if (samples_mixed < 0) {
-			// error
-			for (int i = p_frames - todo; i < p_frames; i++) {
-				AudioFrame audio_frame;
-				audio_frame.left = 0;
-				audio_frame.right = 0;
-				p_buffer[i] = audio_frame;
-			}
-			return p_frames - todo;
-		}
 
 		if (samples_mixed) {
 			AudioFrame audio_frame;
@@ -108,13 +94,13 @@ int32_t AudioStreamPlaybackFLAC::_mix_resampled(AudioFrame *p_buffer, int p_fram
 				loops++;
 			}
 		}
-
-		if (samples_mixed == 0) {
+		else {
 			//EOF
 			if (use_loop) {
 				seek(flac_stream->loop_offset);
 				loops++;
 			} else {
+				frames_mixed_this_step = p_frames - todo;
 				for (int i = p_frames - todo; i < p_frames; i++) {
 					AudioFrame audio_frame;
 					audio_frame.left = 0;
@@ -123,12 +109,11 @@ int32_t AudioStreamPlaybackFLAC::_mix_resampled(AudioFrame *p_buffer, int p_fram
 				}
 				active = false;
 				todo = 0;
-				return 0;
+				
 			}
-			mixed_was_zero = true;
 		}
 	}
-	return p_frames - todo;
+	return frames_mixed_this_step;
 }
 
 float AudioStreamPlaybackFLAC::_get_stream_sampling_rate() const {
@@ -137,7 +122,7 @@ float AudioStreamPlaybackFLAC::_get_stream_sampling_rate() const {
 
 void AudioStreamPlaybackFLAC::_start(double p_from_pos) {
 	active = true;
-	seek(p_from_pos);
+	_seek(p_from_pos);
 	loops = 0;
 	begin_resample();
 }
@@ -166,34 +151,14 @@ void AudioStreamPlaybackFLAC::_seek(double p_time) {
 	if (p_time >= flac_stream->get_length()) {
 		p_time = 0;
 	}
-
 	frames_mixed = uint32_t(flac_stream->sample_rate * p_time);
-	drflac_seek_to_pcm_frame(flacd, (uint64_t)frames_mixed);
+
+	int error = drflac_seek_to_pcm_frame(flacd, (uint64_t)frames_mixed);
+	ERR_FAIL_COND_MSG(error != 0, "FLAC seek failed.");
 }
 
 void AudioStreamPlaybackFLAC::_tag_used_streams() {
-	//flac_stream->tag_used(get_playback_position());
 }
-
-/*void AudioStreamPlaybackFLAC::set_is_sample(bool p_is_sample) {
-	_is_sample = p_is_sample;
-}
-
-bool AudioStreamPlaybackFLAC::get_is_sample() const {
-	return _is_sample;
-}*/
-
-/*
-Ref<AudioSamplePlayback> AudioStreamPlaybackFLAC::get_sample_playback() const {
-	return sample_playback;
-}
-
-void AudioStreamPlaybackFLAC::set_sample_playback(const Ref<AudioSamplePlayback> &p_playback) {
-	sample_playback = p_playback;
-	if (sample_playback.is_valid()) {
-		sample_playback->stream_playback = Ref<AudioStreamPlayback>(this);
-	}
-}*/
 
 void AudioStreamPlaybackFLAC::_set_parameter(const StringName &p_name, const Variant &p_value) {
 	if (p_name == SNAME_looping) {
@@ -235,19 +200,15 @@ Ref<AudioStreamPlayback> AudioStreamFLAC::_instantiate_playback() const {
 	flacs.instantiate();
 	flacs->flac_stream = Ref<AudioStreamFLAC>(this);
 
-	flacs->flacd = drflac_open_memory(data.ptr(), data.size(), (drflac_allocation_callbacks *)&dr_alloc_calls);
-	
 	flacs->frames_mixed = 0;
 	flacs->active = false;
 	flacs->loops = 0;
 	
+	flacs->flacd = drflac_open_memory(data.ptr(), data.size(), (drflac_allocation_callbacks *)&dr_alloc_calls);
+	
 	ERR_FAIL_COND_V(!flacs->flacd, Ref<AudioStreamPlaybackFLAC>());
 
 	return flacs;
-}
-
-String AudioStreamFLAC::_get_stream_name() const {
-	return ""; //return stream_name;
 }
 
 void AudioStreamFLAC::metadata_proc(void* pUserData, drflac_metadata* pMetadata) {
@@ -283,11 +244,9 @@ void AudioStreamFLAC::metadata_proc(void* pUserData, drflac_metadata* pMetadata)
 }
 
 void AudioStreamFLAC::set_data(const PackedByteArray &p_data) {
-	int src_data_len = p_data.size();
-
 	Dictionary dictionary;
 
-	drflac *flacd = drflac_open_memory_with_metadata(p_data.ptr(), src_data_len, &metadata_proc, &dictionary, (drflac_allocation_callbacks *)&dr_alloc_calls);
+	drflac *flacd = drflac_open_memory_with_metadata(p_data.ptr(), p_data.size(), &metadata_proc, &dictionary, (drflac_allocation_callbacks *)&dr_alloc_calls);
 	if (!flacd || flacd->sampleRate == 0){
 		ERR_FAIL_MSG("Failed to decode FLAC file. Make sure it is a valid FLAC audio file.");
 	}
@@ -363,7 +322,7 @@ int AudioStreamFLAC::_get_beat_count() const {
 }
 
 void AudioStreamFLAC::set_bar_beats(int p_bar_beats) {
-	ERR_FAIL_COND(p_bar_beats < 0);
+	ERR_FAIL_COND(p_bar_beats < 2);
 	bar_beats = p_bar_beats;
 	emit_changed();
 }
@@ -379,18 +338,6 @@ void AudioStreamFLAC::set_tags(const Dictionary &p_tags) {
 Dictionary AudioStreamFLAC::get_tags() const {
 	return tags;
 }
-
-/*Ref<AudioSample> AudioStreamFLAC::generate_sample() const {
-	Ref<AudioSample> sample;
-	sample.instantiate();
-	sample->stream = this;
-	sample->loop_mode = loop
-			? AudioSample::LoopMode::LOOP_FORWARD
-			: AudioSample::LoopMode::LOOP_DISABLED;
-	sample->loop_begin = loop_offset;
-	sample->loop_end = 0;
-	return sample;
-}*/
 
 Ref<AudioStreamFLAC> AudioStreamFLAC::load_from_buffer(const PackedByteArray &p_stream_data) {
 	Ref<AudioStreamFLAC> flac_stream;

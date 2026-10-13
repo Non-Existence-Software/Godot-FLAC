@@ -36,7 +36,7 @@
 #include "audio_stream_flac.h"
 
 String EditorImportPluginFLAC::_get_importer_name() const {
-	return "flac";
+	return "FLACImporter";
 }
 
 String EditorImportPluginFLAC::_get_visible_name() const {
@@ -118,5 +118,5 @@ Error EditorImportPluginFLAC::_import(const String &p_source_file, const String 
 	flac_stream->set_beat_count(beat_count);
 	flac_stream->set_bar_beats(bar_beats);
 
-	return ResourceSaver::get_singleton()->save(flac_stream, p_save_path + _get_save_extension());
+	return ResourceSaver::get_singleton()->save(flac_stream, p_save_path + String(".") + _get_save_extension());
 }

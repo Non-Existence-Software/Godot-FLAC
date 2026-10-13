@@ -1,13 +1,13 @@
 // This file is adapted from https://github.com/godotengine/godot/blob/master/editor/audio/audio_stream_editor_plugin.cpp
 
-#include "godot_cpp/classes/audio_stream.hpp"
-#include "godot_cpp/classes/rendering_server.hpp"
-#include "godot_cpp/classes/v_box_container.hpp"
-#include "godot_cpp/classes/h_box_container.hpp"
-#include "godot_cpp/classes/font.hpp"
-#include "godot_cpp/classes/theme.hpp"
-#include "godot_cpp/classes/editor_interface.hpp"
-#include "godot_cpp/classes/editor_settings.hpp"
+#include <godot_cpp/classes/audio_stream.hpp>
+#include <godot_cpp/classes/rendering_server.hpp>
+#include <godot_cpp/classes/v_box_container.hpp>
+#include <godot_cpp/classes/h_box_container.hpp>
+#include <godot_cpp/classes/font.hpp>
+#include <godot_cpp/classes/theme.hpp>
+#include <godot_cpp/classes/editor_interface.hpp>
+#include <godot_cpp/classes/editor_settings.hpp>
 
 #include "editor_inspector_plugin_audio_stream_flac.h"
 #include "audio_stream_flac.h"

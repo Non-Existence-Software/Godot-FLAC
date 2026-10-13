@@ -2,7 +2,7 @@
 import os
 import sys
 
-libname = "FLAC_gdextention"
+libname = "FLAC"
 projectdir = "project"
 
 localEnv = Environment(tools=["default"], PLATFORM="")

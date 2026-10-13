@@ -83,12 +83,6 @@ public:
 
 	virtual void _tag_used_streams() override;
 
-	//virtual void set_sample_playback(const Ref<AudioSamplePlayback> &p_playback) override;
-	//virtual Ref<AudioSamplePlayback> get_sample_playback() const override;
-
-	//virtual void set_is_sample(bool p_is_sample) override;
-	//virtual bool get_is_sample() const override;
-
 	virtual void _set_parameter(const StringName &p_name, const Variant &p_value) override;
 	virtual Variant _get_parameter(const StringName &p_name) const override;
 
@@ -99,8 +93,6 @@ public:
 
 class AudioStreamFLAC : public AudioStream {
 	GDCLASS(AudioStreamFLAC, AudioStream);
-	//OBJ_SAVE_TYPE(AudioStream) //children are all saved as AudioStream, so they can be exchanged
-	//RES_BASE_EXTENSION("flacstr");
 
 	friend class AudioStreamPlaybackFLAC;
 
@@ -153,13 +145,6 @@ public:
 	virtual bool _is_monophonic() const override;
 
 	virtual TypedArray<Dictionary> _get_parameter_list() const override;
-	
-	virtual String _get_stream_name() const override;
-
-	//virtual bool can_be_sampled() const override {
-	//	return true;
-	//}
-	//virtual Ref<AudioSample> generate_sample() const override;
 };
 
 }
