@@ -30,9 +30,13 @@
 
 #pragma once
 
-#include "servers/audio/audio_stream.h"
+#include <godot_cpp/classes/audio_stream.hpp>
+#include <godot_cpp/classes/audio_sample_playback.hpp>
+#include <godot_cpp/classes/audio_stream_playback_resampled.hpp>
 
-#include <thirdparty/dr_libs/dr_flac.h>
+#include <dr_flac.h>
+
+namespace godot {
 
 class AudioStreamFLAC;
 
@@ -42,14 +46,15 @@ class AudioStreamPlaybackFLAC : public AudioStreamPlaybackResampled {
 	enum {
 		FADE_SIZE = 256
 	};
+
 	AudioFrame loop_fade[FADE_SIZE];
 	int loop_fade_remaining = FADE_SIZE;
 
-	bool looping_override = false;
-	bool looping = false;
 	drflac* flacd = nullptr;
 	uint32_t frames_mixed = 0;
 	bool active = false;
+	bool looping_override = false;
+	bool looping = false;
 	int loops = 0;
 
 	friend class AudioStreamFLAC;
@@ -59,29 +64,33 @@ class AudioStreamPlaybackFLAC : public AudioStreamPlaybackResampled {
 	bool _is_sample = false;
 	Ref<AudioSamplePlayback> sample_playback;
 
+	const StringName SNAME_looping = "looping";
 protected:
-	virtual int _mix_internal(AudioFrame *p_buffer, int p_frames) override;
-	virtual float get_stream_sampling_rate() override;
+	static void _bind_methods();
 
 public:
-	virtual void start(double p_from_pos = 0.0) override;
-	virtual void stop() override;
-	virtual bool is_playing() const override;
+	virtual int32_t _mix_resampled(AudioFrame *p_buffer, int p_frames) override;
+	virtual float _get_stream_sampling_rate() const override;
 
-	virtual int get_loop_count() const override; //times it looped
+	virtual void _start(double p_from_pos = 0.0) override;
+	virtual void _stop() override;
+	virtual bool _is_playing() const override;
 
-	virtual double get_playback_position() const override;
-	virtual void seek(double p_time) override;
+	virtual int _get_loop_count() const override; //times it looped
 
-	virtual void tag_used_streams() override;
+	virtual double _get_playback_position() const override;
+	virtual void _seek(double p_time) override;
 
-	virtual void set_is_sample(bool p_is_sample) override;
-	virtual bool get_is_sample() const override;
-	virtual Ref<AudioSamplePlayback> get_sample_playback() const override;
-	virtual void set_sample_playback(const Ref<AudioSamplePlayback> &p_playback) override;
+	virtual void _tag_used_streams() override;
 
-	virtual void set_parameter(const StringName &p_name, const Variant &p_value) override;
-	virtual Variant get_parameter(const StringName &p_name) const override;
+	//virtual void set_sample_playback(const Ref<AudioSamplePlayback> &p_playback) override;
+	//virtual Ref<AudioSamplePlayback> get_sample_playback() const override;
+
+	//virtual void set_is_sample(bool p_is_sample) override;
+	//virtual bool get_is_sample() const override;
+
+	virtual void _set_parameter(const StringName &p_name, const Variant &p_value) override;
+	virtual Variant _get_parameter(const StringName &p_name) const override;
 
 
 	AudioStreamPlaybackFLAC() {}
@@ -90,70 +99,67 @@ public:
 
 class AudioStreamFLAC : public AudioStream {
 	GDCLASS(AudioStreamFLAC, AudioStream);
-	OBJ_SAVE_TYPE(AudioStream) //children are all saved as AudioStream, so they can be exchanged
-	RES_BASE_EXTENSION("flacstr");
+	//OBJ_SAVE_TYPE(AudioStream) //children are all saved as AudioStream, so they can be exchanged
+	//RES_BASE_EXTENSION("flacstr");
 
 	friend class AudioStreamPlaybackFLAC;
 
-	TightLocalVector<uint8_t> data;
-	uint32_t data_len = 0;
-
-	float sample_rate = 1.0;
-	int channels = 1;
+	PackedByteArray data;
 	float length = 0.0;
 	bool loop = false;
-	float loop_offset = 0.0;
-	void clear_data();
-
-	static void metadata_proc(void* pUserData, drflac_metadata* pMetadata);
+	double loop_offset = 0.0;
 
 	double bpm = 0;
 	int beat_count = 0;
 	int bar_beats = 4;
 	Dictionary tags;
 
+	float sample_rate = 1.0;
+	int channels = 1;
+
+	static void metadata_proc(void* pUserData, drflac_metadata* pMetadata);
 protected:
 	static void _bind_methods();
 
 public:
-	static Ref<AudioStreamFLAC> load_from_buffer(const Vector<uint8_t> &p_stream_data);
 	static Ref<AudioStreamFLAC> load_from_file(const String &p_path);
+	static Ref<AudioStreamFLAC> load_from_buffer(const PackedByteArray &p_stream_data);
 
 	void set_loop(bool p_enable);
-	virtual bool has_loop() const override;
+	virtual bool has_loop() const;
 
 	void set_loop_offset(double p_seconds);
 	double get_loop_offset() const;
 
 	void set_bpm(double p_bpm);
-	virtual double get_bpm() const override;
+	virtual double _get_bpm() const override;
 
 	void set_beat_count(int p_beat_count);
-	virtual int get_beat_count() const override;
+	virtual int _get_beat_count() const override;
 
 	void set_bar_beats(int p_bar_beats);
-	virtual int get_bar_beats() const override;
+	virtual int get_bar_beats() const;
 
 	void set_tags(const Dictionary &p_tags);
-	virtual Dictionary get_tags() const override;
+	virtual Dictionary get_tags() const;
 
-	virtual Ref<AudioStreamPlayback> instantiate_playback() override;
-	virtual String get_stream_name() const override;
+	virtual Ref<AudioStreamPlayback> _instantiate_playback() const override;
 
-	void set_data(const Vector<uint8_t> &p_data);
-	Vector<uint8_t> get_data() const;
+	void set_data(const PackedByteArray &p_data);
+	PackedByteArray get_data() const;
 
-	virtual double get_length() const override; // if supported, otherwise return 0
+	virtual double _get_length() const override; // if supported, otherwise return 0
 
-	virtual bool is_monophonic() const override;
+	virtual bool _is_monophonic() const override;
 
-	virtual bool can_be_sampled() const override {
-		return true;
-	}
-	virtual Ref<AudioSample> generate_sample() const override;
+	virtual TypedArray<Dictionary> _get_parameter_list() const override;
+	
+	virtual String _get_stream_name() const override;
 
-	virtual void get_parameter_list(List<Parameter> *r_parameters) override;
-
-	AudioStreamFLAC();
-	virtual ~AudioStreamFLAC();
+	//virtual bool can_be_sampled() const override {
+	//	return true;
+	//}
+	//virtual Ref<AudioSample> generate_sample() const override;
 };
+
+}

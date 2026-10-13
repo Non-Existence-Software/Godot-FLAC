@@ -30,36 +30,73 @@
 
 #include "register_types.h"
 
+#include <gdextension_interface.h>
+#include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/defs.hpp>
+#include <godot_cpp/godot.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/resource_saver.hpp>
+
 #include "audio_stream_flac.h"
+#include "resource_format_loader_flac.h"
+#include "resource_format_saver_flac.h"
+#include "editor_import_plugin_flac.h"
+#include "editor_inspector_plugin_audio_stream_flac.h"
+#include "editor_plugin_flac.h"
 
-#include "core/io/resource_importer.h"
-#include "core/object/class_db.h"
+using namespace godot;
+using namespace flac;
 
-#ifdef TOOLS_ENABLED
-#include "resource_importer_flac.h"
-
-#include "editor/editor_node.h"
-
-static void _editor_init() {
-	Ref<ResourceImporterFLAC> flac_import;
-	flac_import.instantiate();
-	ResourceFormatImporter::get_singleton()->add_importer(flac_import);
-}
-#endif
+static Ref<ResourceFormatLoaderFLAC> resource_format_loader_flac;
+static Ref<ResourceFormatSaverFLAC> resource_format_saver_flac;
 
 void initialize_flac_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
+		GDREGISTER_CLASS(AudioStreamPlaybackFLAC);
 		GDREGISTER_CLASS(AudioStreamFLAC);
+		GDREGISTER_CLASS(ResourceFormatLoaderFLAC);
+		GDREGISTER_CLASS(ResourceFormatSaverFLAC);
+
+		resource_format_loader_flac.instantiate();
+		ResourceLoader::get_singleton()->add_resource_format_loader(resource_format_loader_flac, true);
+
+		resource_format_saver_flac.instantiate();
+		ResourceSaver::get_singleton()->add_resource_format_saver(resource_format_saver_flac, true);
 	}
 
-#ifdef TOOLS_ENABLED
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
-		GDREGISTER_CLASS(ResourceImporterFLAC);
+		GDREGISTER_CLASS(EditorImportPluginFLAC);
+		GDREGISTER_CLASS(EditorInspectorPluginAudioStreamFLACEditor);
+		GDREGISTER_CLASS(EditorInspectorPluginAudioStreamFLAC);
+		GDREGISTER_CLASS(EditorPluginFLAC);
 		
-		EditorNode::add_init_callback(_editor_init);
+		EditorPlugins::add_by_type<EditorPluginFLAC>();
 	}
-#endif
 }
 
 void uninitialize_flac_module(ModuleInitializationLevel p_level) {
+	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
+		ResourceLoader::get_singleton()->remove_resource_format_loader(resource_format_loader_flac);
+		resource_format_loader_flac.unref();
+
+		ResourceSaver::get_singleton()->remove_resource_format_saver(resource_format_saver_flac);
+		resource_format_saver_flac.unref();
+	}
+
+	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
+		EditorPlugins::remove_by_type<EditorPluginFLAC>();
+	}
+}
+
+extern "C" {
+// Initialization.
+GDExtensionBool GDE_EXPORT flac_library_init(GDExtensionInterfaceGetProcAddress p_get_proc_address, const GDExtensionClassLibraryPtr p_library, GDExtensionInitialization *r_initialization) {
+	godot::GDExtensionBinding::InitObject init_obj(p_get_proc_address, p_library, r_initialization);
+
+	init_obj.register_initializer(initialize_flac_module);
+	init_obj.register_terminator(uninitialize_flac_module);
+	init_obj.set_minimum_library_initialization_level(MODULE_INITIALIZATION_LEVEL_SCENE);
+
+	return init_obj.init();
+}
 }

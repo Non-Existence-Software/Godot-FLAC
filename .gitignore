@@ -6,6 +6,7 @@
 *.lo
 *.o
 *.obj
+*.exp
 
 # Precompiled Headers
 *.gch
@@ -33,3 +34,9 @@
 
 # Scons stuff
 *.pyc
+
+
+.sconsign*.dblite
+
+/src/gen
+/bin

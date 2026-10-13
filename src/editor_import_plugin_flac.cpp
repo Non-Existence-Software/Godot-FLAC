@@ -28,70 +28,79 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "resource_importer_flac.h"
 
+#include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/resource_saver.hpp>
+
+#include "editor_import_plugin_flac.h"
 #include "audio_stream_flac.h"
 
-#include "core/io/resource_saver.h"
-
-#ifdef TOOLS_ENABLED
-#include "editor/import/audio_stream_import_settings.h"
-#endif
-
-String ResourceImporterFLAC::get_importer_name() const {
+String EditorImportPluginFLAC::_get_importer_name() const {
 	return "flac";
 }
 
-String ResourceImporterFLAC::get_visible_name() const {
+String EditorImportPluginFLAC::_get_visible_name() const {
 	return "FLAC";
 }
 
-void ResourceImporterFLAC::get_recognized_extensions(List<String> *p_extensions) const {
-	p_extensions->push_back("flac");
+PackedStringArray EditorImportPluginFLAC::_get_recognized_extensions() const {
+	return { "flac" };
 }
 
-String ResourceImporterFLAC::get_save_extension() const {
+String EditorImportPluginFLAC::_get_save_extension() const {
 	return "flacstr";
 }
 
-String ResourceImporterFLAC::get_resource_type() const {
+String EditorImportPluginFLAC::_get_resource_type() const {
 	return "AudioStreamFLAC";
 }
 
-bool ResourceImporterFLAC::get_option_visibility(const String &p_path, const String &p_option, const HashMap<StringName, Variant> &p_options) const {
-	return true;
-}
-
-int ResourceImporterFLAC::get_preset_count() const {
+int32_t EditorImportPluginFLAC::_get_preset_count() const {
 	return 0;
 }
 
-String ResourceImporterFLAC::get_preset_name(int p_idx) const {
-	return String();
+String EditorImportPluginFLAC::_get_preset_name(int32_t p_idx) const {
+	return "";
 }
 
-void ResourceImporterFLAC::get_import_options(const String &p_path, List<ImportOption> *r_options, int p_preset) const {
-	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "loop"), false));
-	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "loop_offset"), 0));
-	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "bpm", PROPERTY_HINT_RANGE, "0,400,0.01,or_greater"), 0));
-	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "beat_count", PROPERTY_HINT_RANGE, "0,512,or_greater"), 0));
-	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "bar_beats", PROPERTY_HINT_RANGE, "2,32,or_greater"), 4));
+TypedArray<Dictionary> EditorImportPluginFLAC::_get_import_options(const String &p_path, int32_t p_preset) const {
+	TypedArray<Dictionary> options;
+
+	Dictionary loop;
+	loop["name"] = "loop";
+	loop["default_value"] = false;
+	options.push_back(loop);
+
+	Dictionary loop_offset;
+	loop_offset["name"] = "loop_offset";
+	loop_offset["default_value"] = 0.0;
+	options.push_back(loop_offset);
+
+	Dictionary bpm;
+	bpm["name"] = "bpm";
+	bpm["default_value"] = 0.0;
+	bpm["property_hint"] = PROPERTY_HINT_RANGE;
+	bpm["hint_string"] = "0,400,0.01,or_greater";
+	options.push_back(bpm);
+
+	Dictionary beat_count;
+	beat_count["name"] = "beat_count";
+	beat_count["default_value"] = 0;
+	beat_count["property_hint"] = PROPERTY_HINT_RANGE;
+	beat_count["hint_string"] = "0,512,or_greater";
+	options.push_back(beat_count);
+
+	Dictionary bar_beats;
+	bar_beats["name"] = "bar_beats";
+	bar_beats["default_value"] = 4;
+	bar_beats["property_hint"] = PROPERTY_HINT_RANGE;
+	bar_beats["hint_string"] = "2,32,or_greater";
+	options.push_back(bar_beats);
+
+	return options;
 }
 
-#ifdef TOOLS_ENABLED
-bool ResourceImporterFLAC::has_advanced_options() const {
-	return true;
-}
-
-void ResourceImporterFLAC::show_advanced_options(const String &p_path) {
-	Ref<AudioStreamFLAC> flac_stream = AudioStreamFLAC::load_from_file(p_path);
-	if (flac_stream.is_valid()) {
-		AudioStreamImportSettingsDialog::get_singleton()->edit(p_path, "flac", flac_stream);
-	}
-}
-#endif
-
-Error ResourceImporterFLAC::import(ResourceUID::ID p_source_id, const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+Error EditorImportPluginFLAC::_import(const String &p_source_file, const String &p_save_path, const Dictionary &p_options, const TypedArray<String> &p_platform_variants, const TypedArray<String> &p_gen_files) const {
 	bool loop = p_options["loop"];
 	float loop_offset = p_options["loop_offset"];
 	double bpm = p_options["bpm"];
@@ -109,8 +118,5 @@ Error ResourceImporterFLAC::import(ResourceUID::ID p_source_id, const String &p_
 	flac_stream->set_beat_count(beat_count);
 	flac_stream->set_bar_beats(bar_beats);
 
-	return ResourceSaver::save(flac_stream, p_save_path + ".flacstr");
-}
-
-ResourceImporterFLAC::ResourceImporterFLAC() {
+	return ResourceSaver::get_singleton()->save(flac_stream, p_save_path + _get_save_extension());
 }

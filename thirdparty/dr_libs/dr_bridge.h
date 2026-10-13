@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  resource_importer_flac.h                                              */
+/*  dr_bridge.h                                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,34 +28,33 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/core/memory.hpp>
 
-#include "core/io/resource_importer.h"
+typedef struct {
+	void *user_data;
+	void *(*malloc_func)(size_t size, void *user_data);
+	void *(*realloc_func)(void *ptr, size_t size, void *user_data);
+	void (*free_func)(void *ptr, void *user_data);
+} dr_allocation_callbacks;
 
-class ResourceImporterFLAC : public ResourceImporter {
-	GDCLASS(ResourceImporterFLAC, ResourceImporter);
+static void *dr_memalloc(size_t size, void *user_data) {
+	return memalloc(size);
+}
 
-public:
-	virtual String get_importer_name() const override;
-	virtual String get_visible_name() const override;
-	virtual void get_recognized_extensions(List<String> *p_extensions) const override;
-	virtual String get_save_extension() const override;
-	virtual String get_resource_type() const override;
+static void *dr_memrealloc(void *ptr, size_t size, void *user_data) {
+	return memrealloc(ptr, size);
+}
 
-	virtual int get_preset_count() const override;
-	virtual String get_preset_name(int p_idx) const override;
+static void dr_memfree(void *ptr, void *user_data) {
+	if (ptr) {
+		memfree(ptr);
+	}
+}
 
-	virtual void get_import_options(const String &p_path, List<ImportOption> *r_options, int p_preset = 0) const override;
-	virtual bool get_option_visibility(const String &p_path, const String &p_option, const HashMap<StringName, Variant> &p_options) const override;
-
-#ifdef TOOLS_ENABLED
-	virtual bool has_advanced_options() const override;
-	virtual void show_advanced_options(const String &p_path) override;
-#endif
-
-	virtual Error import(ResourceUID::ID p_source_id, const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files = nullptr, Variant *r_metadata = nullptr) override;
-	
-	virtual bool can_import_threaded() const override { return true; }
-
-	ResourceImporterFLAC();
+const dr_allocation_callbacks dr_alloc_calls = {
+	nullptr,
+	dr_memalloc,
+	dr_memrealloc,
+	dr_memfree
 };
