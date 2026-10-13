@@ -4,6 +4,9 @@ entry_symbol = "flac_init"
 compatibility_minimum = "4.5"
 reloadable = false
 
+[icons]
+AudioStreamFLAC = "res://addons/FLAC/icons/AudioStreamFLAC.svg"
+
 [libraries]
 
 macos.debug = "./macos/FLAC.macos.template_debug.framework"
