@@ -90,14 +90,14 @@ int32_t AudioStreamPlaybackFLAC::_mix_resampled(AudioFrame *p_buffer, int p_fram
 					}
 				}
 				loop_fade_remaining = 0;
-				seek(flac_stream->loop_offset);
+				_seek(flac_stream->loop_offset);
 				loops++;
 			}
 		}
 		else {
 			//EOF
 			if (use_loop) {
-				seek(flac_stream->loop_offset);
+				_seek(flac_stream->loop_offset);
 				loops++;
 			} else {
 				frames_mixed_this_step = p_frames - todo;
@@ -153,7 +153,7 @@ void AudioStreamPlaybackFLAC::_seek(double p_time) {
 	}
 	frames_mixed = uint32_t(flac_stream->sample_rate * p_time);
 
-	int error = drflac_seek_to_pcm_frame(flacd, (uint64_t)frames_mixed);
+	int error = drflac_seek_to_pcm_frame(flacd, frames_mixed);
 	ERR_FAIL_COND_MSG(error != 0, "FLAC seek failed.");
 }
 
@@ -227,7 +227,7 @@ void AudioStreamFLAC::metadata_proc(void* pUserData, drflac_metadata* pMetadata)
 	// See https://xiph.org/vorbis/doc/v-comment.html
 
 	while(const char* pComment = drflac_next_vorbis_comment(&iterator, &comment_length)) {
-		String c = String(pComment);
+		String c = String::utf8(pComment);
 		int equals = c.find("=");
 
 #ifdef TOOLS_ENABLED
@@ -253,7 +253,7 @@ void AudioStreamFLAC::set_data(const PackedByteArray &p_data) {
 
 	channels = flacd->channels;
 	sample_rate = flacd->sampleRate;
-	length = float(flacd->totalPCMFrameCount) / (flacd->sampleRate);
+	length = double(flacd->totalPCMFrameCount) / (flacd->sampleRate);
 
 	tags = dictionary;
 

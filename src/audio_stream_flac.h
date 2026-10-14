@@ -97,7 +97,7 @@ class AudioStreamFLAC : public AudioStream {
 	friend class AudioStreamPlaybackFLAC;
 
 	PackedByteArray data;
-	float length = 0.0;
+	double length = 0.0;
 	bool loop = false;
 	double loop_offset = 0.0;
 
@@ -106,8 +106,8 @@ class AudioStreamFLAC : public AudioStream {
 	int bar_beats = 4;
 	Dictionary tags;
 
-	float sample_rate = 1.0;
-	int channels = 1;
+	uint32_t sample_rate = 44100;
+	uint8_t channels = 1;
 
 	static void metadata_proc(void* pUserData, drflac_metadata* pMetadata);
 protected:
