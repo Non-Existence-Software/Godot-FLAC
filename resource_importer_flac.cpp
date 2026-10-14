@@ -67,7 +67,7 @@ int ResourceImporterFLAC::get_preset_count() const {
 }
 
 String ResourceImporterFLAC::get_preset_name(int p_idx) const {
-	return String();
+	return "";
 }
 
 void ResourceImporterFLAC::get_import_options(const String &p_path, List<ImportOption> *r_options, int p_preset) const {
@@ -109,7 +109,7 @@ Error ResourceImporterFLAC::import(ResourceUID::ID p_source_id, const String &p_
 	flac_stream->set_beat_count(beat_count);
 	flac_stream->set_bar_beats(bar_beats);
 
-	return ResourceSaver::save(flac_stream, p_save_path + ".flacstr");
+	return ResourceSaver::save(flac_stream, p_save_path + "." + get_save_extension());
 }
 
 ResourceImporterFLAC::ResourceImporterFLAC() {

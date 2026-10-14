@@ -140,7 +140,9 @@ void AudioStreamPlaybackFLAC::seek(double p_time) {
 	}
 
 	frames_mixed = uint32_t(flac_stream->sample_rate * p_time);
-	drflac_seek_to_pcm_frame(flacd, (uint64_t)frames_mixed);
+
+	drflac_bool32 error = drflac_seek_to_pcm_frame(flacd, frames_mixed);
+	ERR_FAIL_COND_MSG(error != DRFLAC_TRUE, "FLAC seek failed.");
 }
 
 void AudioStreamPlaybackFLAC::tag_used_streams() {
@@ -203,7 +205,7 @@ Ref<AudioStreamPlayback> AudioStreamFLAC::instantiate_playback() {
 	flacs.instantiate();
 	flacs->flac_stream = Ref<AudioStreamFLAC>(this);
 
-	flacs->flacd = drflac_open_memory(data.ptr(), data_len, (drflac_allocation_callbacks *)&dr_alloc_calls);
+	flacs->flacd = drflac_open_memory(data.ptr(), data.size(), (drflac_allocation_callbacks *)&dr_alloc_calls);
 	
 	flacs->frames_mixed = 0;
 	flacs->active = false;
@@ -216,10 +218,6 @@ Ref<AudioStreamPlayback> AudioStreamFLAC::instantiate_playback() {
 
 String AudioStreamFLAC::get_stream_name() const {
 	return ""; //return stream_name;
-}
-
-void AudioStreamFLAC::clear_data() {
-	data.clear();
 }
 
 void AudioStreamFLAC::metadata_proc(void* pUserData, drflac_metadata* pMetadata) {
@@ -238,7 +236,7 @@ void AudioStreamFLAC::metadata_proc(void* pUserData, drflac_metadata* pMetadata)
 	// See https://xiph.org/vorbis/doc/v-comment.html
 
 	while(const char* pComment = drflac_next_vorbis_comment(&iterator, &comment_length)) {
-		String c = String(pComment);
+		String c = String::utf8(pComment);
 		int equals = c.find_char('=');
 
 #ifdef TOOLS_ENABLED
@@ -255,11 +253,9 @@ void AudioStreamFLAC::metadata_proc(void* pUserData, drflac_metadata* pMetadata)
 }
 
 void AudioStreamFLAC::set_data(const Vector<uint8_t> &p_data) {
-	int src_data_len = p_data.size();
-
 	Dictionary dictionary;
 
-	drflac *flacd = drflac_open_memory_with_metadata(p_data.ptr(), src_data_len, &metadata_proc, &dictionary, (drflac_allocation_callbacks *)&dr_alloc_calls);
+	drflac *flacd = drflac_open_memory_with_metadata(p_data.ptr(), p_data.size(), &metadata_proc, &dictionary, (drflac_allocation_callbacks *)&dr_alloc_calls);
 	if (!flacd || flacd->sampleRate == 0){
 		ERR_FAIL_MSG("Failed to decode FLAC file. Make sure it is a valid FLAC audio file.");
 	}
@@ -274,7 +270,6 @@ void AudioStreamFLAC::set_data(const Vector<uint8_t> &p_data) {
 	flacd = nullptr;
 
 	data = p_data;
-	data_len = src_data_len;
 }
 
 Vector<uint8_t> AudioStreamFLAC::get_data() const {
@@ -373,7 +368,6 @@ Ref<AudioStreamFLAC> AudioStreamFLAC::load_from_file(const String &p_path) {
 	return load_from_buffer(stream_data);
 }
 
-
 void AudioStreamFLAC::_bind_methods() {
 	ClassDB::bind_static_method("AudioStreamFLAC", D_METHOD("load_from_buffer", "stream_data"), &AudioStreamFLAC::load_from_buffer);
 	ClassDB::bind_static_method("AudioStreamFLAC", D_METHOD("load_from_file", "path"), &AudioStreamFLAC::load_from_file);
@@ -412,5 +406,4 @@ AudioStreamFLAC::AudioStreamFLAC() {
 }
 
 AudioStreamFLAC::~AudioStreamFLAC() {
-	clear_data();
 }

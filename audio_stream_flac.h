@@ -96,21 +96,20 @@ class AudioStreamFLAC : public AudioStream {
 	friend class AudioStreamPlaybackFLAC;
 
 	TightLocalVector<uint8_t> data;
-	uint32_t data_len = 0;
 
-	float sample_rate = 1.0;
-	int channels = 1;
+	drflac_uint32 sample_rate = 44100;
+	drflac_uint8 channels = 1;
+
 	float length = 0.0;
 	bool loop = false;
 	float loop_offset = 0.0;
-	void clear_data();
-
-	static void metadata_proc(void* pUserData, drflac_metadata* pMetadata);
 
 	double bpm = 0;
 	int beat_count = 0;
 	int bar_beats = 4;
 	Dictionary tags;
+
+	static void metadata_proc(void* pUserData, drflac_metadata* pMetadata);
 
 protected:
 	static void _bind_methods();
