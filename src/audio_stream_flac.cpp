@@ -154,7 +154,7 @@ void AudioStreamPlaybackFLAC::_seek(double p_time) {
 	frames_mixed = uint32_t(flac_stream->sample_rate * p_time);
 
 	int error = drflac_seek_to_pcm_frame(flacd, frames_mixed);
-	ERR_FAIL_COND_MSG(error != 0, "FLAC seek failed.");
+	ERR_FAIL_COND_MSG(error != DRFLAC_TRUE, "FLAC seek failed.");
 }
 
 void AudioStreamPlaybackFLAC::_tag_used_streams() {

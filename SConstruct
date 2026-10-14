@@ -5,33 +5,7 @@ import sys
 libname = "FLAC"
 projectdir = "project"
 
-localEnv = Environment(tools=["default"], PLATFORM="")
-
-customs = ["custom.py"]
-customs = [os.path.abspath(path) for path in customs]
-
-opts = Variables(customs, ARGUMENTS)
-opts.Update(localEnv)
-
-env = localEnv.Clone()
-
-env = SConscript("godot-cpp/SConstruct", {"api_version": 4.5, "env": env, "customs": customs})
-
-# For reference:
-# - CCFLAGS are compilation flags shared between C and C++
-# - CFLAGS are for C-specific compilation flags
-# - CXXFLAGS are for C++-specific compilation flags
-# - CPPFLAGS are for pre-processor flags
-# - CPPDEFINES are for pre-processor defines
-# - LINKFLAGS are for linking flags
-
-# Add WIN32 define on Windows (required by config.h)
-if env["platform"] == "windows":
-    env.Append(CPPDEFINES=["WIN32"])
-
-env.Append(CPPDEFINES=[
-    "HAVE_CONFIG_H",
-])
+env = SConscript("godot-cpp/SConstruct", {"api_version": "4.7"})
 
 env.Append(CPPPATH=[
     "src/", 
@@ -41,13 +15,6 @@ env.Append(CPPPATH=[
 sources = (
     Glob("src/*.cpp")
 )
-
-# Remove /fp:strict flag
-if env["CCFLAGS"]:
-    if "/fp:strict" in env["CCFLAGS"]:
-        env["CCFLAGS"].remove("/fp:strict")
-        # Add /fp:precise flag
-        env.Append(CCFLAGS=["/fp:precise"])
 
 if env["target"] in ["editor", "template_debug"]:
     try:
@@ -61,11 +28,8 @@ suffix = env['suffix'].replace(".dev", "").replace(".universal", "")
 lib_filename = "{}{}{}{}".format(env.subst('$SHLIBPREFIX'), libname, suffix, env.subst('$SHLIBSUFFIX'))
 
 library = env.SharedLibrary(
-    "bin/{}/{}".format(env['platform'], lib_filename),
+    "project/addons/{}/bin/{}/{}".format(libname, env['platform'], lib_filename),
     source=sources,
 )
 
-copy = env.Install("{}/addons/{}/bin/{}/".format(projectdir, libname, env["platform"]), library)
-
-default_args = [library, copy]
-Default(*default_args)
+Default(library)
